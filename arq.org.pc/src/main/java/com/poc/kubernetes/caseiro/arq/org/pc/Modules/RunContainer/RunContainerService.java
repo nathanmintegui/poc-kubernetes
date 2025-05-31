@@ -12,11 +12,10 @@ package com.poc.kubernetes.caseiro.arq.org.pc.Modules.RunContainer;
 
 import java.util.Objects;
 
-import org.jvnet.hk2.annotations.Service;
-
 import com.poc.kubernetes.caseiro.arq.org.pc.Repositories.DockerImageRepository;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 /**
  * RunContainerService class.

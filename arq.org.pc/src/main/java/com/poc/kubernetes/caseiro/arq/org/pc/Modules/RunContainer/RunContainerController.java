@@ -23,9 +23,9 @@ import lombok.RequiredArgsConstructor;
 /**
  * RunContainerController class.
  */
+@RequiredArgsConstructor
 @RestController
 @RequestMapping("/v1/api/containers")
-@RequiredArgsConstructor
 public class RunContainerController {
 
     private final RunContainerService runContainerService;
