@@ -3,8 +3,11 @@ package arq.org.pcs.docker_manager_backend.service;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.Image;
+import com.github.dockerjava.api.model.Statistics;
+import com.github.dockerjava.core.InvocationBuilder;
 import org.springframework.stereotype.Service;
 
+import java.io.IOException;
 import java.util.List;
 
 @Service
@@ -41,5 +44,18 @@ public class DockerService {
 
     public void createContainer(String imageName) {
         dockerClient.createContainerCmd(imageName).exec();
+    }
+
+    public Statistics statsContainer(String containerId) {
+        InvocationBuilder.AsyncResultCallback<Statistics> callback = new InvocationBuilder.AsyncResultCallback<>();
+        dockerClient.statsCmd(containerId).exec(callback);
+        Statistics stats = null;
+        try {
+            stats = callback.awaitResult();
+            callback.close();
+        } catch (RuntimeException | IOException e) {
+            // you may want to throw an exception here
+        }
+        return stats; // this may be null or invalid if the container has terminated
     }
 }

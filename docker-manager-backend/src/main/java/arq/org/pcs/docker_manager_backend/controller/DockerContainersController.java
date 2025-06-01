@@ -2,6 +2,7 @@ package arq.org.pcs.docker_manager_backend.controller;
 
 import arq.org.pcs.docker_manager_backend.service.DockerService;
 import com.github.dockerjava.api.model.Container;
+import com.github.dockerjava.api.model.Statistics;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -38,5 +39,10 @@ public class DockerContainersController {
     @PostMapping("")
     public void createContainer(@RequestParam String imageName) {
         dockerService.createContainer(imageName);
+    }
+
+    @GetMapping("/{id}/StatsCmd")
+    public Statistics listContainers(@PathVariable String id) {
+        return dockerService.statsContainer(id);
     }
 }
