@@ -3,9 +3,9 @@ FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 COPY .mvn/ .mvn
 COPY mvnw pom.xml ./
-RUN ./mvnw dependency:go-offline -B
+RUN sudo ./mvnw dependency:go-offline -B
 COPY src ./src
-RUN ./mvnw clean package -DskipTests
+RUN sudo ./mvnw clean package -DskipTests
 
 # Etapa 2: Runtime com JRE 21 (mais leve)
 FROM eclipse-temurin:21-jre-alpine
