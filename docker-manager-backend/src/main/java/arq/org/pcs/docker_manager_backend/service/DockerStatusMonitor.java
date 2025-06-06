@@ -71,7 +71,7 @@ public class DockerStatusMonitor {
                 dockerClient.statsCmd(containerId).exec(new ResultCallback.Adapter<Statistics>() {
                     @Override
                     public void onNext(Statistics stats) {
-                        log.info("[{}] Stats: {}", containerId, stats);
+                        //log.info("[{}] Stats: {}", containerId, stats);
 
                         dockerService.salvarRegistroStatus(containerId, stats);
                     }

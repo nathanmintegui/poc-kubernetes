@@ -28,10 +28,10 @@ public class Imagens {
     private Double maxRamUsage;
 
     @Column(name = "min_replica", nullable = false)
-    private Double minReplica;
+    private Integer minReplica;
 
     @Column(name = "max_replica", nullable = false)
-    private Double maxReplica;
+    private Integer maxReplica;
 
     @OneToMany(mappedBy = "imagem", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Containers> containersEntities;

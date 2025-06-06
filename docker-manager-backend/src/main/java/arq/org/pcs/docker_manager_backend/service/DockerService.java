@@ -1,5 +1,6 @@
 package arq.org.pcs.docker_manager_backend.service;
 
+import arq.org.pcs.docker_manager_backend.dao.ContainerSimplifiedDAO;
 import arq.org.pcs.docker_manager_backend.entity.Containers;
 import arq.org.pcs.docker_manager_backend.entity.Imagens;
 import arq.org.pcs.docker_manager_backend.entity.Status;
@@ -8,6 +9,7 @@ import arq.org.pcs.docker_manager_backend.repository.ContainerRepository;
 import arq.org.pcs.docker_manager_backend.repository.ImagemRepository;
 import arq.org.pcs.docker_manager_backend.repository.StatusContainersRepository;
 import arq.org.pcs.docker_manager_backend.response.ContainerStatusResponse;
+import arq.org.pcs.docker_manager_backend.response.ContainerStatusSimplifiedResponse;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.Image;
@@ -20,8 +22,15 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -92,8 +101,8 @@ public class DockerService {
                             .nome(c.getImage())
                             .maxCpuUsage(80.0)
                             .maxRamUsage(512.0)
-                            .minReplica(1.0)
-                            .maxReplica(5.0)
+                            .minReplica(1)
+                            .maxReplica(5)
                             .build();
 
                     imagemRepository.save(imagem);
@@ -150,5 +159,73 @@ public class DockerService {
         Random random = new Random();
         int port = 1000 + random.nextInt(9000);
         return String.valueOf(port);
+    }
+
+    public List<ContainerStatusSimplifiedResponse> getContainerStatus() {
+        int NUMERO_THREADS = Runtime.getRuntime().availableProcessors();
+
+        List<Container> containers = dockerClient
+                .listContainersCmd()
+                .withShowAll(true)
+                .exec();
+
+        List<ContainerSimplifiedDAO> containerSimplifiedDAOs = containerRepository.getContainersSimplified(
+                LocalDateTime.now().minusMinutes(10));
+        Map<String, ContainerSimplifiedDAO> containerDAOMap = containerSimplifiedDAOs.stream()
+                .collect(Collectors.toMap(ContainerSimplifiedDAO::id, dao -> dao));
+
+        ExecutorService executor = Executors.newFixedThreadPool(NUMERO_THREADS);
+        List<Future<ContainerStatusSimplifiedResponse>> futures = new ArrayList<>();
+
+        for (Container container : containers) {
+            futures.add(executor.submit(() -> {
+                Statistics stats = statsContainer(container.getId());
+                ContainerSimplifiedDAO dao = containerDAOMap.get(container.getId());
+
+                if (dao == null || stats == null) return null;
+
+                return ContainerStatusSimplifiedResponse.builder()
+                        .id(container.getId())
+                        .nome(container.getNames()[0])
+                        .imagem(container.getImage())
+                        .porta(dao.porta())
+                        .ativo(stats.getPidsStats().getCurrent() != 0)
+                        .cpuUsage(dao.cpuUsage())
+                        .maxCpuUsage(dao.maxCpuUsage())
+                        .ramUsage(getRamUsage(stats))
+                        .maxRamUsage(dao.maxRamUsage())
+                        .minReplica(dao.minReplica())
+                        .maxReplica(dao.maxReplica())
+                        .horarioLeitura(LocalDateTime.now())
+                        .build();
+            }));
+        }
+
+        executor.shutdown();
+
+        List<ContainerStatusSimplifiedResponse> response = new ArrayList<>();
+        for (Future<ContainerStatusSimplifiedResponse> future : futures) {
+            try {
+                ContainerStatusSimplifiedResponse result = future.get();
+                if (result != null) response.add(result);
+            } catch (InterruptedException | ExecutionException e) {
+            }
+        }
+
+        return response;
+    }
+
+    /**
+     * Retorna quantidade de ram utilizada pelo container em megabytes.
+     *
+     * @param stats
+     * @return
+     */
+    private Double getRamUsage(Statistics stats) {
+        assert stats != null;
+
+        var ram = stats.getMemoryStats().getUsage().doubleValue() / 1048576;
+
+        return ram;
     }
 }
