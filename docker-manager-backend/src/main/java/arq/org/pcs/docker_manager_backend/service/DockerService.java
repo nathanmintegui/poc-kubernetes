@@ -1,32 +1,41 @@
 package arq.org.pcs.docker_manager_backend.service;
 
+import arq.org.pcs.docker_manager_backend.entity.Containers;
+import arq.org.pcs.docker_manager_backend.entity.StatusContainers;
+import arq.org.pcs.docker_manager_backend.repository.ContainerRepository;
+import arq.org.pcs.docker_manager_backend.repository.StatusContainersRepository;
+import arq.org.pcs.docker_manager_backend.response.ContainerStatusResponse;
 import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.Image;
 import com.github.dockerjava.api.model.Statistics;
 import com.github.dockerjava.core.InvocationBuilder;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.List;
 
+@Slf4j
+@RequiredArgsConstructor
 @Service
 public class DockerService {
+
     private final DockerClient dockerClient;
+    private final ContainerRepository containerRepository;
+    private final StatusContainersRepository statusContainersRepository;
 
-    public DockerService(DockerClient client){
-        this.dockerClient = client;
-    }
-
-    public List<Container> listContainers(boolean all) {
+    public List<com.github.dockerjava.api.model.Container> listContainers(boolean all) {
         return dockerClient.listContainersCmd().withShowAll(all).exec();
     }
 
-    public List<Image> listImages(){
+    public List<Image> listImages() {
         return dockerClient.listImagesCmd().exec();
     }
 
-    public List<Image> filterImages(String filterName){
+    public List<Image> filterImages(String filterName) {
         return dockerClient.listImagesCmd().withImageNameFilter(filterName).exec();
     }
 
@@ -57,5 +66,38 @@ public class DockerService {
             // you may want to throw an exception here
         }
         return stats; // this may be null or invalid if the container has terminated
+    }
+
+    public ContainerStatusResponse getStatusContainers() {
+        return new ContainerStatusResponse(statusContainersRepository.findQualifiedNumPorts());
+    }
+
+    @Transactional
+    public void salvarRegistroStatus(String containerId, Statistics stats) {
+        assert containerId != null && !containerId.isBlank();
+        assert stats != null;
+
+        Containers container = containerRepository.findByIdContainer(containerId).orElse(null);
+        if (container == null) {
+            log.error("Container {} not found", containerId);
+            return;
+        }
+
+        long cpuDelta = stats.getCpuStats().getCpuUsage().getTotalUsage() - stats.getPreCpuStats().getCpuUsage().getTotalUsage();
+
+        var numCpus = stats.getCpuStats().getOnlineCpus();
+        double cpuPercent = ((double) cpuDelta / 1_000_000_000L) * numCpus * 100.0;
+
+        var ram = stats.getMemoryStats().getUsage().doubleValue() / 1048576;
+
+        StatusContainers statusContainer = StatusContainers
+                .builder()
+                .containers(container)
+                .cpuUsage(cpuPercent)
+                .ramUsage(ram)
+                .date(LocalDateTime.now())
+                .build();
+
+        statusContainersRepository.save(statusContainer);
     }
 }
