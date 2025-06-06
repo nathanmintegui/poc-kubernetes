@@ -1,5 +1,6 @@
 package arq.org.pcs.docker_manager_backend.controller;
 
+import arq.org.pcs.docker_manager_backend.response.ContainerStatusResponse;
 import arq.org.pcs.docker_manager_backend.service.DockerService;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.Statistics;
@@ -44,5 +45,10 @@ public class DockerContainersController {
     @GetMapping("/{id}/StatsCmd")
     public Statistics listContainers(@PathVariable String id) {
         return dockerService.statsContainer(id);
+    }
+
+    @GetMapping("/status")
+    public ContainerStatusResponse status() {
+        return dockerService.getStatusContainers();
     }
 }
