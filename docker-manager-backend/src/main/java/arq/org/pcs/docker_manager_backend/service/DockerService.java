@@ -1,11 +1,15 @@
 package arq.org.pcs.docker_manager_backend.service;
 
 import arq.org.pcs.docker_manager_backend.entity.Containers;
+import arq.org.pcs.docker_manager_backend.entity.Imagens;
+import arq.org.pcs.docker_manager_backend.entity.Status;
 import arq.org.pcs.docker_manager_backend.entity.StatusContainers;
 import arq.org.pcs.docker_manager_backend.repository.ContainerRepository;
+import arq.org.pcs.docker_manager_backend.repository.ImagemRepository;
 import arq.org.pcs.docker_manager_backend.repository.StatusContainersRepository;
 import arq.org.pcs.docker_manager_backend.response.ContainerStatusResponse;
 import com.github.dockerjava.api.DockerClient;
+import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.Image;
 import com.github.dockerjava.api.model.Statistics;
 import com.github.dockerjava.core.InvocationBuilder;
@@ -17,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Random;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -26,6 +31,7 @@ public class DockerService {
     private final DockerClient dockerClient;
     private final ContainerRepository containerRepository;
     private final StatusContainersRepository statusContainersRepository;
+    private final ImagemRepository imagemRepository;
 
     public List<com.github.dockerjava.api.model.Container> listContainers(boolean all) {
         return dockerClient.listContainersCmd().withShowAll(all).exec();
@@ -77,11 +83,36 @@ public class DockerService {
         assert containerId != null && !containerId.isBlank();
         assert stats != null;
 
-        Containers container = containerRepository.findByIdContainer(containerId).orElse(null);
-        if (container == null) {
-            log.error("Container {} not found", containerId);
-            return;
-        }
+        Containers container = containerRepository.findByIdContainer(containerId)
+                .orElseGet(() -> {
+                    Container c = getContainerById(containerId);
+
+                    Imagens imagem = Imagens
+                            .builder()
+                            .nome(c.getImage())
+                            .maxCpuUsage(80.0)
+                            .maxRamUsage(512.0)
+                            .minReplica(1.0)
+                            .maxReplica(5.0)
+                            .build();
+
+                    imagemRepository.save(imagem);
+
+                    Containers newContainer = Containers
+                            .builder()
+                            .idContainer(containerId)
+                            .imagem(imagem)
+                            .numPort(c.getPorts()[0].getPublicPort() == null
+                                    ? randomPort()
+                                    : c.getPorts()[0].getPublicPort().toString())
+                            .nome(c.getNames()[0])
+                            .status(Status.UP)
+                            .build();
+
+                    containerRepository.save(newContainer);
+
+                    return newContainer;
+                });
 
         long cpuDelta = stats.getCpuStats().getCpuUsage().getTotalUsage() - stats.getPreCpuStats().getCpuUsage().getTotalUsage();
 
@@ -99,5 +130,25 @@ public class DockerService {
                 .build();
 
         statusContainersRepository.save(statusContainer);
+    }
+
+    public Container getContainerById(String containerId) {
+        if (containerId == null || containerId.isBlank()) {
+            throw new IllegalArgumentException("O ID do container não pode ser nulo ou vazio");
+        }
+
+        return dockerClient.listContainersCmd()
+                .withShowAll(true)
+                .exec()
+                .stream()
+                .filter(c -> c.getId().startsWith(containerId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Container não encontrado: " + containerId));
+    }
+
+    private String randomPort() {
+        Random random = new Random();
+        int port = 1000 + random.nextInt(9000);
+        return String.valueOf(port);
     }
 }

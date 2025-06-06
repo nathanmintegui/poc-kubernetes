@@ -1,11 +1,15 @@
 package arq.org.pcs.docker_manager_backend.entity;
 
 import jakarta.persistence.*;
-import lombok.Data;
+import lombok.*;
 
 import java.util.List;
 
-@Data
+@Builder
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 @Entity
 @Table(name = "imagens")
 public class Imagens {
