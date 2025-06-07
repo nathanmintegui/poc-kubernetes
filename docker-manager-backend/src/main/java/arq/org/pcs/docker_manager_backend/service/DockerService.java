@@ -11,9 +11,8 @@ import arq.org.pcs.docker_manager_backend.repository.StatusContainersRepository;
 import arq.org.pcs.docker_manager_backend.response.ContainerStatusResponse;
 import arq.org.pcs.docker_manager_backend.response.ContainerStatusSimplifiedResponse;
 import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.api.model.Container;
-import com.github.dockerjava.api.model.Image;
-import com.github.dockerjava.api.model.Statistics;
+import com.github.dockerjava.api.command.CreateContainerResponse;
+import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.InvocationBuilder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,10 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -69,7 +65,42 @@ public class DockerService {
     }
 
     public void createContainer(String imageName) {
-        dockerClient.createContainerCmd(imageName).exec();
+
+        List<Imagens> imagens = imagemRepository.findByNome(imageName);
+
+        if (imagens.isEmpty()) {
+            Imagens imagem = Imagens
+                .builder()
+                .nome(imageName)
+                .maxCpuUsage(80.0)
+                .maxRamUsage(512.0)
+                .minReplica(1)
+                .maxReplica(5)
+                .build();
+
+            imagemRepository.save(imagem);
+        }
+
+        ExposedPort portaInterna = ExposedPort.tcp(8080);
+        Ports portBindings = new Ports();
+        portBindings.bind(portaInterna, Ports.Binding.bindPort(Integer.parseInt(randomPort())));
+
+        // Configurações de limite
+        HostConfig hostConfig = HostConfig.newHostConfig()
+                .withMemory(512 * 1024 * 1024L)    // 512MB de memória
+                .withCpuQuota(100000L)             // CPU quota (ex: 200000 = 2 CPUs)
+                .withPortBindings(portBindings);
+
+        // Criação do container com limites
+        CreateContainerResponse container = dockerClient.createContainerCmd(imageName)
+                .withExposedPorts(portaInterna)
+                .withHostConfig(hostConfig)
+                .exec();
+
+        // Iniciar o container
+        dockerClient.startContainerCmd(container.getId()).exec();
+
+        // TODO persistir container na tabela
     }
 
     public Statistics statsContainer(String containerId) {
@@ -159,7 +190,7 @@ public class DockerService {
 
     private String randomPort() {
         Random random = new Random();
-        int port = 1000 + random.nextInt(9000);
+        int port = 20000 + random.nextInt(30000);
         return String.valueOf(port);
     }
 

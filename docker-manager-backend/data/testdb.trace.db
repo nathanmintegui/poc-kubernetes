@@ -4420,3 +4420,88 @@ select * form status_containers order by id desc [42000-232]
 2025-06-06 20:17:36.238668-03:00 jdbc[13]: exception
 org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * [*]form status_containers order by id desc"; SQL statement:
 select * form status_containers order by id desc [42000-232]
+2025-06-07 17:30:04.294931-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "CONTAINES" not found; SQL statement:
+select * from containes [42102-232]
+2025-06-07 17:31:10.295828-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * from containers\000d\000a\000d\000a[*]select * from status_containers"; SQL statement:
+select * from containers
+
+select * from status_containers [42000-232]
+2025-06-07 17:31:26.422773-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * from containers\000d\000a\000d\000a[*]select * from status_containers"; SQL statement:
+select * from containers
+
+select * from status_containers [42000-232]
+2025-06-07 17:31:27.309763-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * from containers\000d\000a\000d\000a[*]select * from status_containers"; SQL statement:
+select * from containers
+
+select * from status_containers [42000-232]
+2025-06-07 17:31:47.054629-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * from containers\000d\000a[*]select * STATUS_CONTAINERS"; SQL statement:
+select * from containers
+select * STATUS_CONTAINERS [42000-232]
+2025-06-07 17:31:50.881126-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * from containers\000d\000a[*]select * STATUS_CONTAINERS"; SQL statement:
+select * from containers
+select * STATUS_CONTAINERS [42000-232]
+2025-06-07 17:32:02.556854-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * from containers\000d\000a\000d\000a[*]select * from STATUS_CONTAINERS"; SQL statement:
+select * from containers
+
+select * from STATUS_CONTAINERS [42000-232]
+2025-06-07 17:32:15.212856-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * from containers\000d\000a\000d\000a[*]select * from STATUS_CONTAINERS"; SQL statement:
+select * from containers
+
+select * from STATUS_CONTAINERS [42000-232]
+2025-06-07 17:32:29.051985-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * from containers\000d\000a\000d\000a[*]select * from STATUS_CONTAINERS"; SQL statement:
+select * from containers
+
+select * from STATUS_CONTAINERS [42000-232]
+2025-06-07 17:32:30.283879-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * from containers\000d\000a\000d\000a[*]select * from STATUS_CONTAINERS"; SQL statement:
+select * from containers
+
+select * from STATUS_CONTAINERS [42000-232]
+2025-06-07 17:32:31.647997-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * from containers\000d\000a\000d\000a[*]select * from STATUS_CONTAINERS"; SQL statement:
+select * from containers
+
+select * from STATUS_CONTAINERS [42000-232]
+2025-06-07 17:32:37.742365-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * from containers\000d\000a\000d\000a[*]select * from STATUS_CONTAINERS"; SQL statement:
+select * from containers
+
+select * from STATUS_CONTAINERS [42000-232]
+2025-06-07 17:32:40.622526-03:00 jdbc[14]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "select * from containers\000d\000a\000d\000a[*]select * from STATUS_CONTAINERS"; SQL statement:
+select * from containers
+
+select * from STATUS_CONTAINERS [42000-232]
+2025-06-07 18:42:21.363704-03:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "delete from containers where id = 1 [*]cascade"; SQL statement:
+delete from containers where id = 1 cascade [42000-232]
+2025-06-07 18:42:37.366215-03:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "CASCADE" not found; SQL statement:
+delete cascade from containers where id = 1 [42102-232]
+2025-06-07 18:42:40.121924-03:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "CASCADE" not found; SQL statement:
+delete cascade from containers where id = 1 [42102-232]
+2025-06-07 19:05:24.475266-03:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "delete [*]table top5_avg_cpu_containers"; expected "identifier"; SQL statement:
+delete table top5_avg_cpu_containers [42001-232]
+2025-06-07 19:05:44.243567-03:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "delete [*]table TOP5_AVG_CPU_CONTAINERS"; expected "identifier"; SQL statement:
+delete table TOP5_AVG_CPU_CONTAINERS [42001-232]
+2025-06-07 19:06:10.310539-03:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Syntax error in SQL statement "delete [*]table TOP5_AVG_CPU_CONTAINERS from sytem"; expected "identifier"; SQL statement:
+delete table TOP5_AVG_CPU_CONTAINERS from sytem [42001-232]
+2025-06-07 19:17:14.916711-03:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "NUM_PORT CHARACTER VARYING(4)": "'42366' (5)"; SQL statement:
+INSERT INTO "PUBLIC"."CONTAINERS"("ID","ID_CONTAINER","NOME","NUM_PORT","STATUS","ID_IMAGEM")VALUES(?,?,?,?,?,?) [22001-232]
+2025-06-07 19:17:14.918737-03:00 jdbc[13]: exception
+org.h2.jdbc.JdbcSQLDataException: Value too long for column "NUM_PORT CHARACTER VARYING(4)": "'42366' (5)"; SQL statement:
+INSERT INTO "PUBLIC"."CONTAINERS"("ID","ID_CONTAINER","NOME","NUM_PORT","STATUS","ID_IMAGEM")VALUES(?,?,?,?,?,?) [22001-232]

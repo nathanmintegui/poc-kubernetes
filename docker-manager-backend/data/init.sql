@@ -18,7 +18,7 @@ CREATE TABLE containers
     id           INT AUTO_INCREMENT PRIMARY KEY,
     id_container VARCHAR(255) NOT NULL UNIQUE,
     id_imagem    INT          NOT NULL,
-    num_port     VARCHAR(4)   NOT NULL UNIQUE,
+    num_port     VARCHAR(5)   NOT NULL UNIQUE,
     nome         VARCHAR(255) NOT NULL UNIQUE,
     status       VARCHAR(10)  NOT NULL CHECK (status IN ('UP', 'DOWN')),
     FOREIGN KEY (id_imagem) REFERENCES imagens (id)

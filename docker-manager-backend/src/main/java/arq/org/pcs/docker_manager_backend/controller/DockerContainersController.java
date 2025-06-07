@@ -47,8 +47,4 @@ public class DockerContainersController {
         return dockerService.statsContainer(id);
     }
 
-    @GetMapping("/status")
-    public ContainerStatusResponse status() {
-        return dockerService.getStatusContainers();
-    }
 }
