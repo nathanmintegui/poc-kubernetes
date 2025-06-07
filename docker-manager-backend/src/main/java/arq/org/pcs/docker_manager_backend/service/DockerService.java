@@ -56,10 +56,12 @@ public class DockerService {
 
     public void startContainer(String containerId) {
         dockerClient.startContainerCmd(containerId).exec();
+        containerRepository.updateStatusByIdContainer(containerId, Status.UP);
     }
 
     public void stopContainer(String containerId) {
         dockerClient.stopContainerCmd(containerId).exec();
+        containerRepository.updateStatusByIdContainer(containerId, Status.DOWN);
     }
 
     public void deleteContainer(String containerId) {
