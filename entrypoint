@@ -1,0 +1,9 @@
+docker pull docker:dind
+
+docker run --privileged -d --name workspace docker:dind
+
+docker cp ./docker-manager-backend workspace:/docker-manager-backend
+docker cp . workspace:/.
+
+docker exec -it workspace /bin/sh
+
