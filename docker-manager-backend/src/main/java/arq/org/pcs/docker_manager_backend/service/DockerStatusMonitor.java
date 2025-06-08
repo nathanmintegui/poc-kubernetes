@@ -28,10 +28,9 @@ public class DockerStatusMonitor {
         Thread monitorThread = new Thread(() -> {
             while (true) {
                 try {
-                    List<Container> containers = dockerClient.listContainersCmd().withShowAll(true).exec();
+                    List<Container> containers = dockerClient.listContainersCmd().exec();
 
                     Set<String> runningContainerIds = containers.stream()
-                            .filter(c -> c.getStatus().contains("Up"))
                             .map(Container::getId)
                             .collect(Collectors.toSet());
 
@@ -71,9 +70,9 @@ public class DockerStatusMonitor {
                 dockerClient.statsCmd(containerId).exec(new ResultCallback.Adapter<Statistics>() {
                     @Override
                     public void onNext(Statistics stats) {
-                        //log.info("[{}] Stats: {}", containerId, stats);
+                        log.info("[{}] Stats: {}", containerId, stats);
 
-                        //dockerService.salvarRegistroStatus(containerId, stats);
+                        dockerService.salvarRegistroStatus(containerId, stats);
                     }
 
                     @Override
