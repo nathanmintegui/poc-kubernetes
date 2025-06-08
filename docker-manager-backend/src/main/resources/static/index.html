@@ -73,6 +73,30 @@
             margin-top: 4px;
             color: #6b7280;
         }
+
+        button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            margin: 5px 4px 0 0;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #2563eb;
+        }
+
+        button:active {
+            background-color: #1d4ed8;
+        }
+
+        .card button {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -82,6 +106,8 @@
 <div class="grid" id="containerGrid">
     <p id="loadingMessage">Carregando dados dos containers...</p>
 </div>
+
+<button onclick="handleClick()">⚠️ Stress API ⚠️</button>
 
 <script>
     const containerGrid = document.getElementById('containerGrid');
@@ -109,12 +135,82 @@
         }
     }
 
+    function handleClick() {
+        fetch("http://localhost:8081/load/start")
+            .then(response => {
+                if (!response.ok) throw new Error("Erro ao chamar a API");
+                return response.json();
+            })
+            .then(data => {
+                if (Array.isArray(data)) {
+                    console.log("[INFO]: api response data ", data)
+                } else {
+                    showError("Resposta inesperada da API.");
+                }
+            })
+            .catch(error => {
+                console.error("Erro na chamada da API:", error);
+                showError("Erro ao obter dados manualmente da API.");
+            });
+    }
+
+    /**
+     * @param {string} containerId
+     */
+    function handleStopContainerClick(containerId) {
+        console.assert(typeof containerId === "string")
+        console.assert(containerId !== "")
+
+        fetch(`http://localhost:8080/api/containers/${containerId}/stop`, {method: 'POST'})
+            .then(response => {
+                if (!response.ok) throw new Error("Erro ao chamar a API");
+            })
+            .catch(error => {
+                console.error("Erro na chamada da API:", error);
+                showError("Erro ao obter dados manualmente da API.");
+            });
+    }
+
+    /**
+     * @param {string} containerId
+     */
+    function handleStopContainerBruteForceClick(containerId) {
+        console.assert(typeof containerId === "string")
+        console.assert(containerId !== "")
+
+        fetch(`http://localhost:8080/api/containers/${containerId}/stop-force`, {method: 'POST'})
+            .then(response => {
+                if (!response.ok) throw new Error("Erro ao chamar a API");
+            })
+            .catch(error => {
+                console.error("Erro na chamada da API:", error);
+                showError("Erro ao obter dados manualmente da API.");
+            });
+    }
+
+    /**
+     * @param {string} containerId
+     */
+    function handleStartContainerClick(containerId) {
+        console.assert(typeof containerId === "string")
+        console.assert(containerId !== "")
+
+        fetch(`http://localhost:8080/api/containers/${containerId}/start`, {method: 'POST'})
+            .then(response => {
+                if (!response.ok) throw new Error("Erro ao chamar a API");
+            })
+            .catch(error => {
+                console.error("Erro na chamada da API:", error);
+                showError("Erro ao obter dados manualmente da API.");
+            });
+    }
+
     // Conecta ao SSE
     function connectSSE() {
         const eventSource = new EventSource("http://localhost:8080/sse");
 
         // Listener para o evento específico que configuramos no backend
-        eventSource.addEventListener('container-status', function(event) {
+        eventSource.addEventListener('container-status', function (event) {
             try {
                 const containers = JSON.parse(event.data);
 
@@ -136,7 +232,7 @@
                         card.className = "card";
                         card.id = `card-${container.id}`;
                         card.innerHTML = `
-                            <h2>${container.nome || 'Sem nome'} (${container.id || 'N/A'})</h2>
+                            <h2>${container.nome || 'Sem nome'} (${container.id.substring(0, 12) || 'N/A'})</h2>
                             <p><strong>Imagem:</strong> ${container.imagem || 'N/A'}</p>
                             <p><strong>Porta:</strong> ${container.porta || 'N/A'}</p>
                             <p><strong>Status:</strong> <span class="${container.ativo ? 'ativo' : 'inativo'}">${container.ativo ? 'Ativo' : 'Inativo'}</span></p>
@@ -153,6 +249,10 @@
 
                             <p><strong>Réplicas:</strong> ${container.minReplica || 0} - ${container.maxReplica || 0}</p>
                             <p><strong>Última leitura:</strong> ${container.horarioLeitura ? formatHoraMinutoSegundo(container.horarioLeitura) : 'N/A'}</p>
+
+                            <button onclick="handleStopContainerClick('${container.id}')" style="background-color: red">Stop</button>
+                            <button onclick="handleStopContainerBruteForceClick('${container.id}')" style="background-color: orangered">Stop Brute Force ⚠️</button>
+                            <button onclick="handleStartContainerClick('${container.id}')" style="background-color: green">Start</button>
                         `;
 
                         containerGrid.appendChild(card);
@@ -166,7 +266,7 @@
             }
         });
 
-        eventSource.onerror = function(error) {
+        eventSource.onerror = function (error) {
             console.error("Erro na conexão SSE:", error);
             showError("Erro na conexão com o servidor. Tentando reconectar...");
 

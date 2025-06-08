@@ -56,6 +56,10 @@ public class DockerService {
         containerRepository.updateStatusByIdContainer(containerId, Status.DOWN);
     }
 
+    public void stopContainerForce(String containerId) {
+        dockerClient.stopContainerCmd(containerId).exec();
+    }
+
     public void deleteContainer(String containerId) {
         dockerClient.removeContainerCmd(containerId).exec();
     }

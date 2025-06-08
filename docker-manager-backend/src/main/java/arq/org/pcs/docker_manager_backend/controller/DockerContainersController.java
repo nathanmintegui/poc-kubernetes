@@ -1,6 +1,5 @@
 package arq.org.pcs.docker_manager_backend.controller;
 
-import arq.org.pcs.docker_manager_backend.response.ContainerStatusResponse;
 import arq.org.pcs.docker_manager_backend.service.DockerService;
 import com.github.dockerjava.api.model.Container;
 import com.github.dockerjava.api.model.Statistics;
@@ -32,6 +31,11 @@ public class DockerContainersController {
         dockerService.stopContainer(id);
     }
 
+    @PostMapping("/{id}/stop-force")
+    public void stopContainerForce(@PathVariable String id) {
+        dockerService.stopContainerForce(id);
+    }
+
     @DeleteMapping("/{id}")
     public void deleteContainer(@PathVariable String id) {
         dockerService.deleteContainer(id);
@@ -46,5 +50,4 @@ public class DockerContainersController {
     public Statistics listContainers(@PathVariable String id) {
         return dockerService.statsContainer(id);
     }
-
 }
