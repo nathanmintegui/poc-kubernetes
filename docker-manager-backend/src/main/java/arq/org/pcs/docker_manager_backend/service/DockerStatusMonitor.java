@@ -8,7 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.HashSet;
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -22,38 +22,18 @@ public class DockerStatusMonitor {
 
     private final DockerClient dockerClient;
     private final DockerService dockerService;
+    private final DockerStatsService dockerStatsService;
     private final Map<String, Thread> activeStatsThreads = new ConcurrentHashMap<>();
 
     public void startAutoMonitor() {
         Thread monitorThread = new Thread(() -> {
-            while (true) {
+            while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    List<Container> containers = dockerClient.listContainersCmd().withShowAll(true).exec();
-
-                    Set<String> runningContainerIds = containers.stream()
-                            .filter(c -> c.getStatus().contains("Up"))
-                            .map(Container::getId)
-                            .collect(Collectors.toSet());
-
-                    for (String containerId : runningContainerIds) {
-                        if (!activeStatsThreads.containsKey(containerId)) {
-                            log.info("Iniciando listener para container: {}", containerId);
-                            startStatsListener(containerId);
-                        }
-                    }
-
-                    for (String containerId : new HashSet<>(activeStatsThreads.keySet())) {
-                        if (!runningContainerIds.contains(containerId)) {
-                            log.info("Container parado, encerrando listener: {}", containerId);
-                            Thread thread = activeStatsThreads.remove(containerId);
-                            if (thread != null && thread.isAlive()) {
-                                thread.interrupt();
-                            }
-                        }
-                    }
-
-                    Thread.sleep(5000); // Espera 5 segundos antes de verificar novamente
-
+                    monitorContainers();
+                    Thread.sleep(5000); // Espera 5 segundos
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    log.info("Monitor de containers interrompido");
                 } catch (Exception e) {
                     log.error("Erro no monitor de containers: {}", e.getMessage());
                 }
@@ -65,30 +45,81 @@ public class DockerStatusMonitor {
         monitorThread.start();
     }
 
-    protected void startStatsListener(String containerId) {
-        Thread statsThread = new Thread(() -> {
-            try {
-                dockerClient.statsCmd(containerId).exec(new ResultCallback.Adapter<Statistics>() {
-                    @Override
-                    public void onNext(Statistics stats) {
-                        //log.info("[{}] Stats: {}", containerId, stats);
+    private void monitorContainers() {
+        List<Container> containers = dockerClient.listContainersCmd().exec();
+        Set<String> runningContainerIds = containers.stream()
+                .map(Container::getId)
+                .collect(Collectors.toSet());
 
-                        //dockerService.salvarRegistroStatus(containerId, stats);
-                    }
+        // Inicia listeners para novos containers
+        startListenersForNewContainers(runningContainerIds);
 
-                    @Override
-                    public void onError(Throwable throwable) {
-                        log.error("[{}] Erro: {}", containerId, throwable.getMessage());
-                    }
+        // Remove listeners para containers parados
+        cleanupStoppedContainers(runningContainerIds);
+    }
 
-                    @Override
-                    public void onComplete() {
-                        log.info("[{}] Stream finalizada.", containerId);
-                        activeStatsThreads.remove(containerId);
+    private void startListenersForNewContainers(Set<String> runningContainerIds) {
+        runningContainerIds.forEach(containerId -> {
+            if (!activeStatsThreads.containsKey(containerId)) {
+                log.info("Iniciando listener para container: {}", containerId);
+                startStatsListener(containerId);
+            }
+        });
+    }
+
+    private void cleanupStoppedContainers(Set<String> runningContainerIds) {
+        activeStatsThreads.keySet().stream()
+                .filter(containerId -> !runningContainerIds.contains(containerId))
+                .forEach(containerId -> {
+                    log.info("Container parado, encerrando listener: {}", containerId);
+                    Thread thread = activeStatsThreads.remove(containerId);
+                    if (thread != null) {
+                        thread.interrupt();
                     }
                 });
+    }
+
+    protected void startStatsListener(String containerId) {
+        Thread statsThread = new Thread(() -> {
+            ResultCallback<Statistics> callback = new ResultCallback.Adapter<Statistics>() {
+                @Override
+                public void onNext(Statistics stats) {
+                    processContainerStats(containerId, stats);
+                }
+
+                @Override
+                public void onError(Throwable throwable) {
+                    log.error("[{}] Erro no stream de stats: {}", containerId, throwable.getMessage());
+                    activeStatsThreads.remove(containerId);
+                    try {
+                        close();
+                    } catch (IOException e) {
+                        log.warn("[{}] Erro ao fechar callback: {}", containerId, e.getMessage());
+                    }
+                }
+
+                @Override
+                public void onComplete() {
+                    log.info("[{}] Stream de stats finalizada", containerId);
+                    activeStatsThreads.remove(containerId);
+                    try {
+                        close();
+                    } catch (IOException e) {
+                        log.warn("[{}] Erro ao fechar callback: {}", containerId, e.getMessage());
+                    }
+                }
+            };
+
+            try {
+                dockerClient.statsCmd(containerId).exec(callback);
             } catch (Exception e) {
                 log.error("[{}] Falha ao iniciar stats: {}", containerId, e.getMessage());
+                activeStatsThreads.remove(containerId);
+                try {
+                    callback.close();
+                } catch (IOException ex) {
+                    log.warn("[{}] Erro ao fechar callback: {}", containerId, ex.getMessage());
+                }
             }
         });
 
@@ -96,5 +127,19 @@ public class DockerStatusMonitor {
         statsThread.setName("DockerStats-" + containerId);
         activeStatsThreads.put(containerId, statsThread);
         statsThread.start();
+    }
+
+    private void processContainerStats(String containerId, Statistics stats) {
+        try {
+            // Usa o DockerStatsService para cálculos consistentes
+            float cpuUsage = dockerStatsService.calculateCpuUsage(containerId);
+            double ramUsage = dockerStatsService.getMemoryUsageMb(containerId);
+
+            if (cpuUsage >= 0 && ramUsage >= 0) {
+                dockerService.salvarRegistroStatus(containerId, stats, cpuUsage, ramUsage);
+            }
+        } catch (Exception e) {
+            log.error("[{}] Erro ao processar stats: {}", containerId, e.getMessage());
+        }
     }
 }
