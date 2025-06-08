@@ -1,8 +1,10 @@
 package arq.org.pcs.docker_manager_backend.repository;
 
 import arq.org.pcs.docker_manager_backend.entity.StatusContainers;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -33,4 +35,14 @@ public interface StatusContainersRepository extends JpaRepository<StatusContaine
             nativeQuery = true
     )
     List<String> findQualifiedNumPorts();
+
+
+    @Query("""
+                SELECT s
+                            FROM StatusContainers s
+                                        WHERE s.containers.id = :containerId
+                                                    ORDER BY s.date DESC
+            """)
+    List<StatusContainers>  getAvgContainerCpu(@Param("containerId") Integer containerId, Pageable pageable);
+
 }

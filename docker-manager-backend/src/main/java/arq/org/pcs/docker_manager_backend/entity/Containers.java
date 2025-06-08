@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Builder
@@ -22,7 +23,7 @@ public class Containers {
     @Column(name = "id_container", nullable = false, unique = true)
     private String idContainer;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_imagem", nullable = false)
     private Imagens imagem;
 
@@ -35,6 +36,9 @@ public class Containers {
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)
     private Status status;
+
+    @Column(name = "start_time", nullable = false)
+    private LocalDateTime startTime;
 
     @JsonIgnore
     @OneToMany(mappedBy = "containers", cascade = CascadeType.ALL, orphanRemoval = true)

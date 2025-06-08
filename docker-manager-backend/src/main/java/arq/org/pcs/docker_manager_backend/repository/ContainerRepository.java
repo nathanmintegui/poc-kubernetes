@@ -21,23 +21,22 @@ public interface ContainerRepository extends JpaRepository<Containers, Integer> 
 
     @Query("""
                 SELECT new arq.org.pcs.docker_manager_backend.dao.ContainerSimplifiedDAO(
-                    c.idContainer,
-                    c.numPort,
-                    i.maxCpuUsage,
-                    i.maxRamUsage,
-                    i.minReplica,
-                    i.maxReplica,
-                    COALESCE((
-                        SELECT s.cpuUsage
-                        FROM StatusContainers s
-                        WHERE s.containers = c
-                          AND s.date > :minDate
-                        ORDER BY s.date DESC
-                        LIMIT 1
-                    ), 0.0)
+                    c,
+                    COALESCE(
+                        (SELECT sc.cpuUsage 
+                         FROM c.statusContainerEntities sc 
+                         WHERE sc.date > :minDate
+                         ORDER BY sc.date DESC
+                         LIMIT 1),
+                        0.0
+                    ),
+                    (SELECT COUNT(c2) 
+                     FROM Containers c2 
+                     WHERE c2.status = 'UP' 
+                       AND c2.imagem = c.imagem)
                 )
                 FROM Containers c
-                JOIN c.imagem i
+                WHERE c.status = 'UP'
             """)
     List<ContainerSimplifiedDAO> getContainersSimplified(@Param("minDate") LocalDateTime minDate);
 

@@ -1,10 +1,8 @@
 package arq.org.pcs.docker_manager_backend.dao;
 
-public record ContainerSimplifiedDAO(String id,
-                                     String porta,
-                                     Double maxCpuUsage,
-                                     Double maxRamUsage,
-                                     Integer minReplica,
-                                     Integer maxReplica,
-                                     Double cpuUsage) {
+import arq.org.pcs.docker_manager_backend.entity.Containers;
+
+public record ContainerSimplifiedDAO(Containers containers,
+                                     Double cpuUsage,
+                                     Long runningReplica) {
 }

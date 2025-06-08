@@ -81,7 +81,7 @@ public class StatusContainersController {
                                             .porta(getPortFromContainer(container))
                                             .ativo(container.getState().equals("running"))
                                             .cpuUsage((double) cpuUsage)
-                                            .maxCpuUsage(80.0) // Valor padrão ou do banco
+                                            .maxCpuUsage(100.0) // Valor padrão ou do banco
                                             .ramUsage(ramUsage)
                                             .maxRamUsage(512.0) // Valor padrão ou do banco
                                             .minReplica(1) // Valor padrão ou do banco

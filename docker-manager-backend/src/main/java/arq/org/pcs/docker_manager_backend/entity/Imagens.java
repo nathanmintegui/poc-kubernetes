@@ -33,7 +33,7 @@ public class Imagens {
     @Column(name = "max_replica", nullable = false)
     private Integer maxReplica;
 
-    @OneToMany(mappedBy = "imagem", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(mappedBy = "imagem", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
     private List<Containers> containersEntities;
 
     public static Imagens create(String imageName) {

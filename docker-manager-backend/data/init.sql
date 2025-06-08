@@ -21,6 +21,7 @@ CREATE TABLE containers
     num_port     VARCHAR(5)   NOT NULL UNIQUE,
     nome         VARCHAR(255) NOT NULL UNIQUE,
     status       VARCHAR(10)  NOT NULL CHECK (status IN ('UP', 'DOWN')),
+    start_time   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_imagem) REFERENCES imagens (id)
 );
 

@@ -11,6 +11,7 @@ import arq.org.pcs.docker_manager_backend.response.ContainerStatusResponse;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
+import com.github.dockerjava.api.exception.NotModifiedException;
 import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.InvocationBuilder;
 import lombok.RequiredArgsConstructor;
@@ -47,13 +48,21 @@ public class DockerService {
     }
 
     public void startContainer(String containerId) {
-        dockerClient.startContainerCmd(containerId).exec();
-        containerRepository.updateStatusByIdContainer(containerId, Status.UP);
+        try {
+            dockerClient.startContainerCmd(containerId).exec();
+            containerRepository.updateStatusByIdContainer(containerId, Status.UP);
+        } catch (NotModifiedException e) {
+            log.warn("Container not modified!", e);
+        }
     }
 
     public void stopContainer(String containerId) {
-        dockerClient.stopContainerCmd(containerId).exec();
-        containerRepository.updateStatusByIdContainer(containerId, Status.DOWN);
+        try {
+            dockerClient.stopContainerCmd(containerId).exec();
+            containerRepository.updateStatusByIdContainer(containerId, Status.DOWN);
+        } catch (NotModifiedException e) {
+            log.warn("Container not modified!", e);
+        }
     }
 
     public void stopContainerForce(String containerId) {
@@ -85,10 +94,10 @@ public class DockerService {
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withMemory(512 * 1024 * 1024L)    // 512MB de memória
                 // Remova CPU quota ou aumente significativamente
-                .withCpuQuota(80000L)  // Permite uso de até 0.8 CPU (80% de 1 core)
+                .withCpuQuota(100000L)  // Permite uso de até 1.0 CPU (100% de 1 core)
                 .withCpuPeriod(100000L) // Período padrão de 100ms
-                .withCpuShares(1024)               // Peso relativo da CPU (default: 1024)
-                .withCpusetCpus("0-3")             // CPUs específicas a serem usadas (ex: "0,1" ou "0-3")
+                //.withCpuShares(1024)               // Peso relativo da CPU (default: 1024)
+                //.withCpusetCpus("0-3")             // CPUs específicas a serem usadas (ex: "0,1" ou "0-3")
                 .withPortBindings(portBindings);
 
         CreateContainerResponse container = dockerClient.createContainerCmd(imageName)
@@ -106,6 +115,7 @@ public class DockerService {
                 .numPort(portaExterna)
                 .nome(inspect.getName())
                 .status(Status.UP)
+                .startTime(LocalDateTime.now())
                 .build();
 
         containerRepository.save(containerToBePersisted);
