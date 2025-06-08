@@ -33,4 +33,4 @@ build/
 .vscode/
 
 ### H2 ###
-*.db
+data/testdb.mv.db
