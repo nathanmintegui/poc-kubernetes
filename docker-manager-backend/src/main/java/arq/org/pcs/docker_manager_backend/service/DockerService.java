@@ -1,6 +1,5 @@
 package arq.org.pcs.docker_manager_backend.service;
 
-import arq.org.pcs.docker_manager_backend.dao.ContainerSimplifiedDAO;
 import arq.org.pcs.docker_manager_backend.entity.Containers;
 import arq.org.pcs.docker_manager_backend.entity.Imagens;
 import arq.org.pcs.docker_manager_backend.entity.Status;
@@ -9,7 +8,6 @@ import arq.org.pcs.docker_manager_backend.repository.ContainerRepository;
 import arq.org.pcs.docker_manager_backend.repository.ImagemRepository;
 import arq.org.pcs.docker_manager_backend.repository.StatusContainersRepository;
 import arq.org.pcs.docker_manager_backend.response.ContainerStatusResponse;
-import arq.org.pcs.docker_manager_backend.response.ContainerStatusSimplifiedResponse;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
 import com.github.dockerjava.api.command.InspectContainerResponse;
@@ -22,18 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.stream.Collectors;
 
-import static arq.org.pcs.docker_manager_backend.service.Utils.getRamUsage;
 import static arq.org.pcs.docker_manager_backend.service.Utils.randomPort;
-import static java.lang.Math.abs;
 
 @Slf4j
 @RequiredArgsConstructor
