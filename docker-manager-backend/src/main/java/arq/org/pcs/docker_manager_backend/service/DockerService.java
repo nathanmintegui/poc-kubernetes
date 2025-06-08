@@ -91,7 +91,11 @@ public class DockerService {
 
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withMemory(512 * 1024 * 1024L)    // 512MB de memória
-                .withCpuQuota(10000L)             // CPU quota (ex: 100000 = 1 CPUs)
+                // Remova CPU quota ou aumente significativamente
+                .withCpuQuota(80000L)  // Permite uso de até 0.8 CPU (80% de 1 core)
+                .withCpuPeriod(100000L) // Período padrão de 100ms
+                .withCpuShares(1024)               // Peso relativo da CPU (default: 1024)
+                .withCpusetCpus("0-3")             // CPUs específicas a serem usadas (ex: "0,1" ou "0-3")
                 .withPortBindings(portBindings);
 
         CreateContainerResponse container = dockerClient.createContainerCmd(imageName)
@@ -132,62 +136,47 @@ public class DockerService {
     }
 
     @Transactional
-    public void salvarRegistroStatus(String containerId, Statistics stats) {
+    public void salvarRegistroStatus(String containerId, Statistics stats, float cpuUsage, double ramUsage) {
         assert containerId != null && !containerId.isBlank();
-        assert stats != null;
 
         Containers container = containerRepository.findByIdContainer(containerId)
-                .orElseGet(() -> {
-                    Container c = getContainerById(containerId);
+                .orElseGet(() -> createNewContainerRecord(containerId));
 
-                    Imagens imagem = Imagens
-                            .builder()
-                            .nome(c.getImage())
-                            .maxCpuUsage(80.0)
-                            .maxRamUsage(512.0)
-                            .minReplica(1)
-                            .maxReplica(5)
-                            .build();
-
-                    imagemRepository.save(imagem);
-
-                    Containers newContainer = Containers
-                            .builder()
-                            .idContainer(containerId)
-                            .imagem(imagem)
-                            .numPort(c.getPorts()[0].getPublicPort() == null
-                                    ? randomPort()
-                                    : c.getPorts()[0].getPublicPort().toString())
-                            .nome(c.getNames()[0])
-                            .status(Status.UP)
-                            .build();
-
-                    containerRepository.save(newContainer);
-
-                    return newContainer;
-                });
-
-        long cpuDelta = abs(stats.getCpuStats().getCpuUsage().getTotalUsage()) - abs(stats.getPreCpuStats().getCpuUsage().getTotalUsage());
-
-        var numCpus = stats.getCpuStats().getOnlineCpus();
-        double cpuPercent = ((double) abs(cpuDelta) / 1_000_000_000L) * numCpus * 100.0;
-
-        var ram = stats.getMemoryStats().getUsage().doubleValue() / 1048576;
-
-        StatusContainers statusContainer = null;
-        try {
-            statusContainer = StatusContainers
-                    .builder()
-                    .containers(container)
-                    .cpuUsage((double) processaTUDO(containerId))
-                    .ramUsage(ram)
-                    .date(LocalDateTime.now())
-                    .build();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        StatusContainers statusContainer = StatusContainers
+                .builder()
+                .containers(container)
+                .cpuUsage((double) cpuUsage)
+                .ramUsage(ramUsage)
+                .date(LocalDateTime.now())
+                .build();
 
         statusContainersRepository.save(statusContainer);
+    }
+
+    private Containers createNewContainerRecord(String containerId) {
+        Container c = getContainerById(containerId);
+
+        Imagens imagem = Imagens
+                .builder()
+                .nome(c.getImage())
+                .maxCpuUsage(80.0)
+                .maxRamUsage(512.0)
+                .minReplica(1)
+                .maxReplica(5)
+                .build();
+
+        imagemRepository.save(imagem);
+
+        return Containers
+                .builder()
+                .idContainer(containerId)
+                .imagem(imagem)
+                .numPort(c.getPorts()[0].getPublicPort() == null
+                        ? randomPort()
+                        : c.getPorts()[0].getPublicPort().toString())
+                .nome(c.getNames()[0])
+                .status(Status.UP)
+                .build();
     }
 
     public Container getContainerById(String containerId) {
@@ -202,113 +191,5 @@ public class DockerService {
                 .filter(c -> c.getId().startsWith(containerId))
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Container não encontrado: " + containerId));
-    }
-
-    public List<ContainerStatusSimplifiedResponse> getContainerStatus() {
-        int NUMERO_THREADS = Runtime.getRuntime().availableProcessors();
-
-        List<Container> containers = dockerClient
-                .listContainersCmd()
-                .withShowAll(true)
-                .exec();
-
-        List<ContainerSimplifiedDAO> containerSimplifiedDAOs = containerRepository.getContainersSimplified(
-                LocalDateTime.now().minusMinutes(10));
-        Map<String, ContainerSimplifiedDAO> containerDAOMap = containerSimplifiedDAOs.stream()
-                .collect(Collectors.toMap(ContainerSimplifiedDAO::id, dao -> dao));
-
-        ExecutorService executor = Executors.newFixedThreadPool(NUMERO_THREADS);
-        List<Future<ContainerStatusSimplifiedResponse>> futures = new ArrayList<>();
-
-        for (Container container : containers) {
-            futures.add(executor.submit(() -> {
-                Statistics stats = statsContainer(container.getId());
-                ContainerSimplifiedDAO dao = containerDAOMap.get(container.getId());
-
-                if (dao == null || stats == null) return null;
-
-                return ContainerStatusSimplifiedResponse.builder()
-                        .id(container.getId())
-                        .nome(container.getNames()[0])
-                        .imagem(container.getImage())
-                        .porta(dao.porta())
-                        .ativo(stats.getPidsStats().getCurrent() != 0)
-                        .cpuUsage(dao.cpuUsage())
-                        .maxCpuUsage(dao.maxCpuUsage())
-                        .ramUsage(getRamUsage(stats))
-                        .maxRamUsage(dao.maxRamUsage())
-                        .minReplica(dao.minReplica())
-                        .maxReplica(dao.maxReplica())
-                        .horarioLeitura(LocalDateTime.now())
-                        .build();
-            }));
-        }
-
-        executor.shutdown();
-
-        List<ContainerStatusSimplifiedResponse> response = new ArrayList<>();
-        for (Future<ContainerStatusSimplifiedResponse> future : futures) {
-            try {
-                ContainerStatusSimplifiedResponse result = future.get();
-                if (result != null) response.add(result);
-            } catch (InterruptedException | ExecutionException e) {
-            }
-        }
-
-        return response;
-    }
-
-    private static class CpuStats {
-        long systemCpuUsage;
-        long containerCpuUsage;
-        long onlineCpus;
-    }
-
-    public float processaTUDO(String containerId) throws IOException {
-
-        try {
-            // Primeira leitura (pode ter precpu_stats vazio)
-            Statistics stats1 = statsContainer(containerId);
-            CpuStats first = extractCpuStats(stats1);
-
-            // Aguarda 1 segundo para a próxima leitura
-            Thread.sleep(1000);
-
-            // Segunda leitura (para cálculo delta)
-            Statistics stats2 = statsContainer(containerId);
-            CpuStats second = extractCpuStats(stats2);
-
-            // Cálculo da porcentagem de uso
-            if (first.systemCpuUsage == 0 || second.systemCpuUsage == 0) {
-                return -1; // Dados inválidos
-            }
-
-            float cpuDelta = second.containerCpuUsage - first.containerCpuUsage;
-            float systemDelta = second.systemCpuUsage - first.systemCpuUsage;
-
-            if (systemDelta <= 0 || cpuDelta <= 0) {
-                return 0; // Sem uso significativo
-            }
-
-            float cpuPercent = (cpuDelta / systemDelta) * second.onlineCpus * 100;
-            return Math.min(cpuPercent, 100); // Limita a 100%
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return -1;
-        } finally {
-            dockerClient.close();
-        }
-    }
-
-    private static CpuStats extractCpuStats(Statistics stats) {
-        CpuStats cpuStats = new CpuStats();
-        cpuStats.systemCpuUsage = stats.getCpuStats().getSystemCpuUsage() != null
-                ? stats.getCpuStats().getSystemCpuUsage() : 0;
-        cpuStats.containerCpuUsage = stats.getCpuStats().getCpuUsage().getTotalUsage() != null
-                ? stats.getCpuStats().getCpuUsage().getTotalUsage() : 0;
-        cpuStats.onlineCpus = stats.getCpuStats().getOnlineCpus() != null
-                ? stats.getCpuStats().getOnlineCpus() : 1;
-        return cpuStats;
     }
 }

@@ -80,62 +80,106 @@
 <h1>Status dos Containers</h1>
 
 <div class="grid" id="containerGrid">
+    <p id="loadingMessage">Carregando dados dos containers...</p>
 </div>
 
 <script>
     const containerGrid = document.getElementById('containerGrid');
+    const loadingMessage = document.getElementById('loadingMessage');
 
-    const eventSource = new EventSource("http://localhost:8080/sse");
-
-    function formatHoraMinutoSegundo(dataHora) {
-        const date = new Date(dataHora);
-        const horas = String(date.getHours()).padStart(2, '0');
-        const minutos = String(date.getMinutes()).padStart(2, '0');
-        const segundos = String(date.getSeconds()).padStart(2, '0');
-        return `${horas}:${minutos}:${segundos}`;
+    // Função para exibir mensagem de erro
+    function showError(message) {
+        containerGrid.innerHTML = `<div class="card" style="grid-column: 1 / -1; background-color: #fee2e2; border-left-color: #ef4444;">
+            <h2>Erro na conexão</h2>
+            <p>${message}</p>
+            <p>Tente recarregar a página.</p>
+        </div>`;
     }
 
-    eventSource.onmessage = function (event) {
-        const containers = JSON.parse(event.data);
+    // Função para formatar hora
+    function formatHoraMinutoSegundo(dataHora) {
+        try {
+            const date = new Date(dataHora);
+            const horas = String(date.getHours()).padStart(2, '0');
+            const minutos = String(date.getMinutes()).padStart(2, '0');
+            const segundos = String(date.getSeconds()).padStart(2, '0');
+            return `${horas}:${minutos}:${segundos}`;
+        } catch (e) {
+            return dataHora; // Retorna o valor original se não puder formatar
+        }
+    }
 
-        containerGrid.innerHTML = "";
+    // Conecta ao SSE
+    function connectSSE() {
+        const eventSource = new EventSource("http://localhost:8080/sse");
 
-        containers.forEach(container => {
-            const cpuPercent = (container.cpuUsage / container.maxCpuUsage) * 100;
-            const ramPercent = (container.ramUsage / container.maxRamUsage) * 100;
+        // Listener para o evento específico que configuramos no backend
+        eventSource.addEventListener('container-status', function(event) {
+            try {
+                const containers = JSON.parse(event.data);
 
-            const card = document.createElement("div");
-            card.className = "card";
-            card.id = `card-${container.id}`;
-            card.innerHTML = `
-            <h2>${container.nome} (${container.id})</h2>
-            <p><strong>Imagem:</strong> ${container.imagem}</p>
-            <p><strong>Porta:</strong> ${container.porta}</p>
-            <p><strong>Status:</strong> <span class="${container.ativo === true ? 'ativo' : 'inativo'}">${container.ativo ? 'Ativo' : 'Inativo'}</span></p>
+                if (containers && containers.length > 0) {
+                    loadingMessage.style.display = 'none';
 
-            <p class="label">Uso de CPU: ${container.cpuUsage.toFixed(2)}%</p>
-            <div class="progress-bar">
-                <div class="fill" style="width: ${cpuPercent}%;"></div>
-            </div>
+                    containerGrid.innerHTML = "";
 
-            <p class="label">Uso de RAM: ${container.ramUsage.toFixed(2)}MB</p>
-            <div class="progress-bar">
-                <div class="fill" style="width: ${ramPercent}%; background-color: #10b981;"></div>
-            </div>
+                    containers.forEach(container => {
+                        // Verifica se os valores existem antes de calcular
+                        const cpuPercent = container.maxCpuUsage > 0
+                            ? (container.cpuUsage / container.maxCpuUsage) * 100
+                            : 0;
+                        const ramPercent = container.maxRamUsage > 0
+                            ? (container.ramUsage / container.maxRamUsage) * 100
+                            : 0;
 
-            <p><strong>Réplicas:</strong> ${container.minReplica} - ${container.maxReplica}</p>
-            <p><strong>Última leitura:</strong> ${formatHoraMinutoSegundo(container.horarioLeitura)}</p>
-        `;
+                        const card = document.createElement("div");
+                        card.className = "card";
+                        card.id = `card-${container.id}`;
+                        card.innerHTML = `
+                            <h2>${container.nome || 'Sem nome'} (${container.id || 'N/A'})</h2>
+                            <p><strong>Imagem:</strong> ${container.imagem || 'N/A'}</p>
+                            <p><strong>Porta:</strong> ${container.porta || 'N/A'}</p>
+                            <p><strong>Status:</strong> <span class="${container.ativo ? 'ativo' : 'inativo'}">${container.ativo ? 'Ativo' : 'Inativo'}</span></p>
 
-            containerGrid.appendChild(card);
+                            <p class="label">Uso de CPU: ${container.cpuUsage ? container.cpuUsage.toFixed(2) : '0'}%</p>
+                            <div class="progress-bar">
+                                <div class="fill" style="width: ${cpuPercent}%;"></div>
+                            </div>
+
+                            <p class="label">Uso de RAM: ${container.ramUsage ? container.ramUsage.toFixed(2) : '0'}MB</p>
+                            <div class="progress-bar">
+                                <div class="fill" style="width: ${ramPercent}%; background-color: #10b981;"></div>
+                            </div>
+
+                            <p><strong>Réplicas:</strong> ${container.minReplica || 0} - ${container.maxReplica || 0}</p>
+                            <p><strong>Última leitura:</strong> ${container.horarioLeitura ? formatHoraMinutoSegundo(container.horarioLeitura) : 'N/A'}</p>
+                        `;
+
+                        containerGrid.appendChild(card);
+                    });
+                } else {
+                    loadingMessage.textContent = "Nenhum container em execução";
+                }
+            } catch (error) {
+                console.error("Erro ao processar dados:", error);
+                showError("Erro ao processar os dados recebidos do servidor.");
+            }
         });
-    };
 
+        eventSource.onerror = function(error) {
+            console.error("Erro na conexão SSE:", error);
+            showError("Erro na conexão com o servidor. Tentando reconectar...");
 
-    eventSource.onerror = function (err) {
-        console.error("[ERROR]: EventSource failed:", err);
-        eventSource.close();
-    };
+            // Fecha a conexão atual
+            eventSource.close();
+
+            // Tenta reconectar após 5 segundos
+            setTimeout(connectSSE, 5000);
+        };
+    }
+
+    // Inicia a conexão quando a página carrega
+    window.addEventListener('DOMContentLoaded', connectSSE);
 </script>
 
 </body>
