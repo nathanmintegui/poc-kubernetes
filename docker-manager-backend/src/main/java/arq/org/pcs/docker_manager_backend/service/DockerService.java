@@ -12,6 +12,7 @@ import arq.org.pcs.docker_manager_backend.response.ContainerStatusResponse;
 import arq.org.pcs.docker_manager_backend.response.ContainerStatusSimplifiedResponse;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.command.CreateContainerResponse;
+import com.github.dockerjava.api.command.InspectContainerResponse;
 import com.github.dockerjava.api.model.*;
 import com.github.dockerjava.core.InvocationBuilder;
 import lombok.RequiredArgsConstructor;
@@ -21,12 +22,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
+
+import static arq.org.pcs.docker_manager_backend.service.Utils.getRamUsage;
+import static arq.org.pcs.docker_manager_backend.service.Utils.randomPort;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -65,42 +71,46 @@ public class DockerService {
     }
 
     public void createContainer(String imageName) {
+        assert imageName != null && !imageName.isBlank();
 
         List<Imagens> imagens = imagemRepository.findByNome(imageName);
-
+        Imagens imageToBePersisted;
         if (imagens.isEmpty()) {
-            Imagens imagem = Imagens
-                .builder()
-                .nome(imageName)
-                .maxCpuUsage(80.0)
-                .maxRamUsage(512.0)
-                .minReplica(1)
-                .maxReplica(5)
-                .build();
+            imageToBePersisted = Imagens.create(imageName);
 
-            imagemRepository.save(imagem);
+            imagemRepository.save(imageToBePersisted);
+        } else {
+            imageToBePersisted = imagens.getFirst();
         }
 
         ExposedPort portaInterna = ExposedPort.tcp(8080);
         Ports portBindings = new Ports();
-        portBindings.bind(portaInterna, Ports.Binding.bindPort(Integer.parseInt(randomPort())));
+        var portaExterna = randomPort();
+        portBindings.bind(portaInterna, Ports.Binding.bindPort(Integer.parseInt(portaExterna)));
 
-        // Configurações de limite
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withMemory(512 * 1024 * 1024L)    // 512MB de memória
-                .withCpuQuota(100000L)             // CPU quota (ex: 200000 = 2 CPUs)
+                .withCpuQuota(100000L)             // CPU quota (ex: 100000 = 1 CPUs)
                 .withPortBindings(portBindings);
 
-        // Criação do container com limites
         CreateContainerResponse container = dockerClient.createContainerCmd(imageName)
                 .withExposedPorts(portaInterna)
                 .withHostConfig(hostConfig)
                 .exec();
 
-        // Iniciar o container
         dockerClient.startContainerCmd(container.getId()).exec();
+        InspectContainerResponse inspect = dockerClient.inspectContainerCmd(container.getId()).exec();
 
-        // TODO persistir container na tabela
+        Containers containerToBePersisted = Containers
+                .builder()
+                .idContainer(container.getId())
+                .imagem(imageToBePersisted)
+                .numPort(portaExterna)
+                .nome(inspect.getName())
+                .status(Status.UP)
+                .build();
+
+        containerRepository.save(containerToBePersisted);
     }
 
     public Statistics statsContainer(String containerId) {
@@ -188,12 +198,6 @@ public class DockerService {
                 .orElseThrow(() -> new RuntimeException("Container não encontrado: " + containerId));
     }
 
-    private String randomPort() {
-        Random random = new Random();
-        int port = 20000 + random.nextInt(30000);
-        return String.valueOf(port);
-    }
-
     public List<ContainerStatusSimplifiedResponse> getContainerStatus() {
         int NUMERO_THREADS = Runtime.getRuntime().availableProcessors();
 
@@ -246,19 +250,5 @@ public class DockerService {
         }
 
         return response;
-    }
-
-    /**
-     * Retorna quantidade de ram utilizada pelo container em megabytes.
-     *
-     * @param stats
-     * @return
-     */
-    private Double getRamUsage(Statistics stats) {
-        assert stats != null;
-
-        var ram = stats.getMemoryStats().getUsage().doubleValue() / 1048576;
-
-        return ram;
     }
 }

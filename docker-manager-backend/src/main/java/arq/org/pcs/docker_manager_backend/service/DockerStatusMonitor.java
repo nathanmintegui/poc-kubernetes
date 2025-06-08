@@ -73,7 +73,7 @@ public class DockerStatusMonitor {
                     public void onNext(Statistics stats) {
                         //log.info("[{}] Stats: {}", containerId, stats);
 
-                        dockerService.salvarRegistroStatus(containerId, stats);
+                        //dockerService.salvarRegistroStatus(containerId, stats);
                     }
 
                     @Override

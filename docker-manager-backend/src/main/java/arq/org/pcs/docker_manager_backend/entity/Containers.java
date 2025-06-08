@@ -1,5 +1,6 @@
 package arq.org.pcs.docker_manager_backend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -35,6 +36,7 @@ public class Containers {
     @Enumerated(EnumType.STRING)
     private Status status;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "containers", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<StatusContainers> statusContainerEntities;
 }

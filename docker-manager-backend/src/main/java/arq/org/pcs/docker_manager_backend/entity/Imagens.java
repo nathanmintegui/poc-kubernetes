@@ -35,4 +35,17 @@ public class Imagens {
 
     @OneToMany(mappedBy = "imagem", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Containers> containersEntities;
+
+    public static Imagens create(String imageName) {
+        assert imageName != null && !imageName.isBlank();
+
+        return Imagens
+                .builder()
+                .nome(imageName)
+                .maxCpuUsage(80.0)
+                .maxRamUsage(512.0)
+                .minReplica(1)
+                .maxReplica(5)
+                .build();
+    }
 }
