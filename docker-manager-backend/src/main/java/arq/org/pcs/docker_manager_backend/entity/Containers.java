@@ -25,7 +25,7 @@ public class Containers {
     @JoinColumn(name = "id_imagem", nullable = false)
     private Imagens imagem;
 
-    @Column(name = "numPort", length = 4, nullable = false, unique = true)
+    @Column(name = "numPort", length = 5, nullable = false, unique = true)
     private String numPort;
 
     @Column(name = "nome", nullable = false, unique = true)
