@@ -32,7 +32,7 @@ public class AutoScallingJob {
     private final StatusContainersRepository statusContainersRepository;
     private final DockerService dockerService;
 
-    @Scheduled(fixedDelay = 5000)
+    @Scheduled(fixedDelay = 3000)
     public void task() {
         LocalDateTime dateNow = LocalDateTime.now();
         LocalDateTime startTime = dateNow.minusSeconds(TEMPO_AMOSTRAGEM);

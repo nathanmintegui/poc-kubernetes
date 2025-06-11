@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 public class StatusContainersController {
 
     private static final Logger log = LoggerFactory.getLogger(StatusContainersController.class);
-    private static final int SEND_INTERVAL_MS = 1000; // 1 segundo entre atualizações
+    private static final int SEND_INTERVAL_MS = 2000; // 1 segundo entre atualizações
     private static final long CONNECTION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutos
 
     private final DockerClient dockerClient;

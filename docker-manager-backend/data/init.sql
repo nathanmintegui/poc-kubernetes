@@ -16,7 +16,6 @@ CREATE INDEX idx_imagens_nome ON imagens (nome);
 CREATE TABLE containers
 (
     id           INT AUTO_INCREMENT PRIMARY KEY,
-    id_container VARCHAR(255) NOT NULL UNIQUE,
     id_imagem    INT          NOT NULL,
     num_port     VARCHAR(5)   NOT NULL UNIQUE,
     nome         VARCHAR(255) NOT NULL UNIQUE,
